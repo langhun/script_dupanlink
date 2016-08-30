@@ -1,15 +1,14 @@
 // ==UserScript==
-// @name        百度网盘助手
+// @name        百度网盘助手•改
 // @author      有一份田
 // @description 显示百度网盘文件的直接链接,突破大文件需要使用电脑管家的限制
 // @namespace   https://greasyfork.org/zh-CN/scripts/986-百度网盘助手
-// @updateURL   https://greasyfork.org/scripts/986-百度网盘助手/code/百度网盘助手.meta.js
-// @downloadURL https://greasyfork.org/scripts/986-百度网盘助手/code/百度网盘助手.user.js
 // @icon        http://img.duoluohua.com/appimg/script_dupanlink_icon_48.png
 // @license     GPL version 3
 // @encoding    utf-8
 // @date        26/08/2013
-// @modified    05/09/2014
+// @modified    07/18/2016
+// @include     https://pan.baidu.com/*
 // @include     http://pan.baidu.com/*
 // @include     http://yun.baidu.com/*
 // @exclude     http://yun.baidu.com
@@ -17,12 +16,12 @@
 // @exclude     http://pan.baidu.com/share/manage*
 // @exclude     http://pan.baidu.com/disk/recyclebin*
 // @exclude     http://yun.baidu.com/pcloud/album/info*
+// @require     http://code.jquery.com/jquery-2.1.1.min.js
 // @grant       unsafeWindow
 // @grant       GM_setClipboard
 // @run-at      document-end
-// @version     2.4.7
+// @version     3.1.0
 // ==/UserScript==
-
 
 
 /*
@@ -40,8 +39,8 @@
 
 
 
-var VERSION = '2.4.7';
-var APPNAME = '百度网盘助手';
+var VERSION = '3.0.2';
+var APPNAME = '\u767e\u5ea6\u7f51\u76d8\u52a9\u624b';
 var t = new Date().getTime();
 
 
@@ -53,25 +52,26 @@ var Utilities = unsafeWindow.Utilities;
 var yunData = unsafeWindow.yunData;
 var require= unsafeWindow.require;
 
+
 (function (){
     var isOther = location.href.indexOf('://pan.baidu.com/disk')==-1,
     downProxy = null,shareData = null,
-    Canvas,Pancel,RestAPI,Toast={},errorMsg,CommonService,
+    Canvas,Pancel,RestAPI,Toast={},errorMsg,
     iframe = '',httpHwnd = null,index = 0,
     msg = [
-        '咱能不二么,一个文件都不选你让我咋个办...', //0
-        '尼玛一个文件都不选你下个毛线啊...', //1
-        '你TM知道你选了<b>90</b>多个文件吗?想累死我啊...', //2
-        '<b>请求已发送，数据下行中...</b>', //3
-        '<b>该页面</b>不支持文件夹和多文件的<font color="red"><b>链接复制和查看</b></font>！', //4
-        '<font color="red">请求超时了...</font>', //5
-        '<font color="red">请求出错了...</font>', //6
-        '<font color="red">返回数据无法直视...</font>', //7
-        '请输入验证码', //8
-        '验证码输入错误,请重新输入', //9
-        '<b>链接已复制到剪切板！</b>', //10
-        '未知错误，errno:',//11
-        '<font color="red"><b>尼玛竟然跪了了，不要告诉我你的水表在里面...</b></font>',//12
+        '\u54b1\u80fd\u4e0d\u4e8c\u4e48,\u4e00\u4e2a\u6587\u4ef6\u90fd\u4e0d\u9009\u4f60\u8ba9\u6211\u548b\u4e2a\u529e...', //0
+        '\u5c3c\u739b\u4e00\u4e2a\u6587\u4ef6\u90fd\u4e0d\u9009\u4f60\u4e0b\u4e2a\u6bdb\u7ebf\u554a...', //1
+        '\u4f60TM\u77e5\u9053\u4f60\u9009\u4e86<b>90</b>\u591a\u4e2a\u6587\u4ef6\u5417?\u60f3\u7d2f\u6b7b\u6211\u554a...', //2
+        '<b>\u8bf7\u6c42\u5df2\u53d1\u9001\uff0c\u6570\u636e\u4e0b\u884c\u4e2d...</b>', //3
+        '<b>\u8be5\u9875\u9762</b>\u4e0d\u652f\u6301\u6587\u4ef6\u5939\u548c\u591a\u6587\u4ef6\u7684<font color="red"><b>\u94fe\u63a5\u590d\u5236\u548c\u67e5\u770b</b></font>\uff01', //4
+        '<font color="red">\u8bf7\u6c42\u8d85\u65f6\u4e86...</font>', //5
+        '<font color="red">\u8bf7\u6c42\u51fa\u9519\u4e86...</font>', //6
+        '<font color="red">\u8fd4\u56de\u6570\u636e\u65e0\u6cd5\u76f4\u89c6...</font>', //7
+        '\u8bf7\u8f93\u5165\u9a8c\u8bc1\u7801', //8
+        '\u9a8c\u8bc1\u7801\u8f93\u5165\u9519\u8bef,\u8bf7\u91cd\u65b0\u8f93\u5165', //9
+        '<b>\u94fe\u63a5\u5df2\u590d\u5236\u5230\u526a\u5207\u677f\uff01</b>', //10
+        '\u672a\u77e5\u9519\u8bef\uff0cerrno:',//11
+        '<font color="red"><b>\u5c3c\u739b\u7adf\u7136\u8dea\u4e86\u4e86\uff0c\u4e0d\u8981\u544a\u8bc9\u6211\u4f60\u7684\u6c34\u8868\u5728\u91cc\u9762...</b></font>',//12
         ''
         ],
     btnClassArr=[
@@ -86,15 +86,14 @@ var require= unsafeWindow.require;
         shareData = isOther ? disk.util.ViewShareUtils || null : null;
     }catch(e){}
     if(!isOther || (isOther && !FileUtils)){
-        RestAPI = require("common:widget/restApi/restApi.js");
-        CommonService = require("common:widget/commonService/commonService.js");
-        Canvas = require("common:widget/canvasPanel/canvasPanel.js");
-        Pancel = require("common:widget/panel/panel.js");
+        RestAPI=require("common:widget/restApi/restApi.js");
+        Canvas=require("common:widget/canvasPanel/canvasPanel.js");
+        Pancel=require("common:widget/panel/panel.js");
         Toast = require("common:widget/toast/toast.js");
         errorMsg = require("common:widget/errorMsg/errorMsg.js");
     }
     var helperMenuBtns=(function(){
-        var menuTitleArr=['直接下载','复制链接','查看链接'],panBtnsArr=[],html='';
+        var menuTitleArr=['\u76f4\u63a5\u4e0b\u8f7d','\u590d\u5236\u94fe\u63a5','\u67e5\u770b\u94fe\u63a5'],panBtnsArr=[],html='';
         for(var i=0;i<btnClassArr.length;i++){
             var item=btnClassArr[i];
             var tmpItem=item.id!='' ? $('#'+item.id) : $('.'+item.css);
@@ -108,7 +107,7 @@ var require= unsafeWindow.require;
             html+='<li><a href="javascript:;" class="panHelperMenuBtn" type="'+i+'"><b>'+menuTitleArr[i]+'</b></a></li>';
         }
         html+='<li style="display:none;"><a href="' + getApiUrl('getnewversion', 1) + '" target="_blank">';
-        html+='<img id="updateimg" title="有一份田" style="border:none;"/></a></li></ul></div>';
+        html+='<img id="updateimg" title="\u6709\u4e00\u4efd\u7530" style="border:none;"/></a></li></ul></div>';
         $('<div>').html(html).appendTo(document.body);
         for (var i = 0; i < panBtnsArr.length; i++) {
             var item = panBtnsArr[i];
@@ -116,12 +115,12 @@ var require= unsafeWindow.require;
         }
         function createHelperBtn(btn) {
             var newnode=btn.cloneNode(true),html=newnode.innerHTML;
-            $(newnode).attr('id','').attr('href','javascript:void(0)').attr('data-key','downloadhelper').attr('node-type','btn-helper').attr('onclick','').css({width:63}).html(html.replace(/[\u4E00-\u9FA5]{2,4}(\(.*\)|（.*）)?/,'网盘助手')).unbind();
-            var o=$('<div class="panHelperBtn" style="display:inline-block;">').append(newnode)[0];
+            $(newnode).attr('id','').attr('href','javascript:void(0)').attr('data-key','downLoadhelper').attr('node-type','btnHelper').attr('onclick','').css({width:63}).html(html.replace(/[\u4E00-\u9FA5]{2,4}(\(.*\)|\uff08.*\uff09)?/,'\u7f51\u76d8\u52a9\u624b')).unbind();
+            var o=$('<div class="PanHelperBtn" style="display:inline-block;">').append(newnode)[0];
             btn.parentNode.insertBefore(o, btn.nextSibling);
             return o;
         }
-        var helperBtn = $('.panHelperBtn'),helperMenu = $('#panHelperMenu'),
+        var helperBtn = $('.PanHelperBtn'),helperMenu = $('#panHelperMenu'),
         menuFun = function() {
             helperDownload($(this).attr('type') || 0);
             helperMenu.hide();
@@ -181,7 +180,7 @@ var require= unsafeWindow.require;
     function getDownloadInfo(type, items, vcode) {
         if(!vcode) {
             showHelperDialog(helperMenuBtns.length+1, items);
-            vcode = FileUtils ? '' : {};
+            vcode = {};
         }
         var url = '',data = {},fidlist = '',fids = [];
         for (var i = 0; i < items.length; i++) {
@@ -224,7 +223,7 @@ var require= unsafeWindow.require;
                 yunData.sign2 = new Function("return " + yunData.sign2)();
             } catch (o) {}
             data={
-                sign: CommonService.base64Encode(yunData.sign2(yunData.sign3, yunData.sign1)),
+                sign: base64Encode(yunData.sign2(yunData.sign3, yunData.sign1)),
                 timestamp: yunData.timestamp,
                 bdstoken: yunData.MYBDSTOKEN,
                 fidlist: fidlist,
@@ -244,7 +243,22 @@ var require= unsafeWindow.require;
                         }
                         dlink = dlink + '&zipname=' + encodeURIComponent(getDownloadName(items));
                         o.dlink = dlink;
-                        setCheckedItemsDlink(items,dlink);
+                        if (shareData) {
+                            var obj = JSON.parse(shareData.viewShareData);
+                            obj.dlink = dlink;
+                            shareData.viewShareData = JSON.stringify(obj);
+                        }
+                        if (1 == items.length) {
+                            items[0]['dlink'] = dlink;
+                            if(items[0]['item']){
+                                $(items[0]['item']).attr('dlink',dlink);
+                            }
+                            try{
+                                if(yunData.SHAREPAGETYPE == "single_file_page"){
+                                    yunData.FILEINFO = items;
+                                }
+                            }catch(e){}
+                        }
                     }else{
                         if(o.vcode_img && o.vcode_str){
                             o.errno = -20;
@@ -310,7 +324,7 @@ var require= unsafeWindow.require;
         _.loading.style.display = 0==status ? '' : 'none';
         _.showdlink.style.display = 1==status ? '' : 'none';
         _.showvcode.style.display = 2==status ? '' : 'none';
-        _.showbtnbar.style.display = 1==status ? '' : 'none';
+        _.copytext.style.display = 1==status ? '' : 'none';
         if (!isVisible) {
             _.canvas.setVisible(true);
             _.setVisible(true);
@@ -319,12 +333,12 @@ var require= unsafeWindow.require;
         _.focusobj.focus();
     }
     function createHelperDialog() {
-        var html = '<div class="dlg-hd b-rlv"title="有一份田"><span title="关闭"id="helperdialogclose"class="dlg-cnr dlg-cnr-r"></span><h3><a href="'+getApiUrl('getnewversion',1)+'"target="_blank"style="color:#000;">'+APPNAME+'&nbsp;' + VERSION + '</a><span id="showbtnbar"style="float:right;margin-right:175px;"><a href="javascript:;"title="点此复制"id="copytext">点此复制</a>（<a href="javascript:;"title="重新获取"id="redlink">重新获取</a>）</span></h3></div><div class="download-mgr-dialog-msg center"id="helperloading"><b>数据赶来中...</b></div><div id="showvcode"style="text-align:center;display:none;"><div class="dlg-bd download-verify"style="text-align:center;margin-top:25px;"><div class="verify-body">请输入验证码：<input type="text"maxlength="4"class="input-code vcode"><img width="100"height="30"src=""alt="验证码获取中"class="img-code"><a class="underline"href="javascript:;">换一张</a></div><div class="verify-error"style="text-align:left;margin-left:84px;"></div></div><br><div><div class="alert-dialog-commands clearfix"><a href="javascript:;"class="sbtn okay postvcode"><b>确定</b></a><a href="javascript:;"class="dbtn cancel"><b>关闭</b></a></div></div></div><div id="showdlink"style="text-align:center;display:none;"><div class="dlg-bd download-verify"><div style="padding:5px 0px;"><b><span id="sharefilename"></span></b></div><input type="text"name="sharedlink"id="sharedlink"class="input-code"maxlength="1024"value=""style="width:500px;border:1px solid #7FADDC;padding:3px;height:24px;"></div><br><div><div class="alert-dialog-commands clearfix"><a href="javascript:;"class="sbtn okay postdownload"><b>直接下载</b></a><a href="javascript:;"class="dbtn cancel"><b>关闭</b></a></div></div></div>',
+        var html = '<div class="dlg-hd b-rlv"title="\u6709\u4e00\u4efd\u7530"><span title="\u5173\u95ed"id="helperdialogclose"class="dlg-cnr dlg-cnr-r"></span><h3><a href="'+getApiUrl('getnewversion',1)+'"target="_blank"style="color:#000;">'+APPNAME+'&nbsp;' + VERSION + '</a><a href="javascript:;"title="\u70b9\u6b64\u590d\u5236"id="copytext"style="float:right;margin-right:240px;display:none;">\u70b9\u6b64\u590d\u5236</a></h3></div><div class="download-mgr-dialog-msg center"id="helperloading"><b>\u6570\u636e\u8d76\u6765\u4e2d...</b></div><div id="showvcode"style="text-align:center;display:none;"><div class="dlg-bd download-verify"style="text-align:center;margin-top:25px;"><div class="verify-body">\u8bf7\u8f93\u5165\u9a8c\u8bc1\u7801\uff1a<input type="text"maxlength="4"class="input-code vcode"><img width="100"height="30"src=""alt="\u9a8c\u8bc1\u7801\u83b7\u53d6\u4e2d"class="img-code"><a class="underline"href="javascript:;">\u6362\u4e00\u5f20</a></div><div class="verify-error"style="text-align:left;margin-left:84px;"></div></div><br><div><div class="alert-dialog-commands clearfix"><a href="javascript:;"class="sbtn okay postvcode"><b>\u786e\u5b9a</b></a><a href="javascript:;"class="dbtn cancel"><b>\u5173\u95ed</b></a></div></div></div><div id="showdlink"style="text-align:center;display:none;"><div class="dlg-bd download-verify"><div style="padding:5px 0px;"><b><span id="sharefilename"></span></b></div><input type="text"name="sharedlink"id="sharedlink"class="input-code"maxlength="1024"value=""style="width:500px;border:1px solid #7FADDC;padding:3px;height:24px;"></div><br><div><div class="alert-dialog-commands clearfix"><a href="javascript:;"class="sbtn okay postdownload"><b>\u76f4\u63a5\u4e0b\u8f7d</b></a><a href="javascript:;"class="dbtn cancel"><b>\u5173\u95ed</b></a></div></div></div>',
         o=$('<div class="b-panel download-mgr-dialog helperdialog" style="width:550px;">').html(html).appendTo(document.body);
         o[0].pane = o[0];
         var _ = Pancel ? new Pancel(o[0]) : new disk.ui.Panel(o[0]),vcodeimg = o.find('img')[0],vcodeinput = o.find('.vcode')[0],
         sharedlink = o.find('#sharedlink')[0],vcodetip = o.find('.verify-error')[0],
-        showbtnbar = o.find('#showbtnbar')[0],postdownloadBtn=o.find('.postdownload')[0],
+        copytext= o.find('#copytext')[0],postdownloadBtn=o.find('.postdownload')[0],
         dialogClose = function() {
             vcodeinput.value = '';
             vcodetip.innerHTML = '';
@@ -352,7 +366,7 @@ var require= unsafeWindow.require;
         _.loading = o.find('#helperloading')[0];
         _.showvcode = o.find('#showvcode')[0];
         _.showdlink = o.find('#showdlink')[0];
-        _.showbtnbar= showbtnbar;
+        _.copytext= copytext;
         _.downloadbtn=postdownloadBtn;
         _.vcodeinput = vcodeinput;
         _.sharedlink = sharedlink;
@@ -362,14 +376,9 @@ var require= unsafeWindow.require;
         _.vcodeimgsrc = '';
         _.vcodevalue = '';
         _.focusobj = sharedlink;
-        o.find('#copytext').click(function(){
+        $(copytext).click(function(){
             copyText(_.dlink);
             this.blur();
-        });
-        o.find('#redlink').click(function(){
-            setCheckedItemsDlink(_.items);
-            dialogClose();
-            helperDownload(2);
         });
         $(vcodeimg).siblings('a').click(function() {
             vcodeimg.src = _.vcodeimgsrc + '&' + new Date().getTime();
@@ -453,25 +462,6 @@ var require= unsafeWindow.require;
         });
         return iframe;
     }
-    function setCheckedItemsDlink(items,dlink){
-        dlink = dlink || '';
-        if (shareData) {
-            var obj = JSON.parse(shareData.viewShareData);
-            obj.dlink = dlink;
-            shareData.viewShareData = JSON.stringify(obj);
-        }
-        if (1 == items.length) {
-            items[0]['dlink'] = dlink;
-            if(items[0]['item']){
-                $(items[0]['item']).attr('dlink',dlink);
-            }
-            try{
-                if(yunData.SHAREPAGETYPE == "single_file_page"){
-                    yunData.FILEINFO = items;
-                }
-            }catch(e){}
-        }
-    }
     function getListViewCheckedItems(){
         var items=[];
         if(shareData){
@@ -512,7 +502,7 @@ var require= unsafeWindow.require;
                 downProxy.prototype.setPackName(FileUtils.parseDirFromPath(items[0]['path']), !items[0]['isdir']);
                 packName= downProxy.prototype._mPackName;
             }catch(e){
-                packName='【批量下载】'+packName+'等.zip';
+                packName='\u3010\u6279\u91cf\u4e0b\u8f7d\u3011'+packName+'\u7b49.zip';
             }
         }
         return packName;
@@ -557,7 +547,8 @@ var require= unsafeWindow.require;
         });
     }
 })();
-
+loadJs('function myToastInjection(msg,type,isOther){try{var Toast={},obtain,Pancel=null;if(isOther&&disk.ui){obtain=disk.ui.Toast;Toast.obtain={};Toast.obtain.useToast=Utilities.useToast}else{Toast=require("common:widget/toast/toast.js");Pancel=require("common:widget/panel/panel.js");obtain=Toast.obtain}var o=Toast.obtain.useToast({toastMode:type?obtain.MODE_SUCCESS:obtain.MODE_FAILURE,msg:msg,sticky:false,position:Pancel?Pancel.TOP:(disk.ui?disk.ui.Panel.TOP:undefined)});try{$(o._mUI.pane).css({"z-index":999999})}catch(e){}}catch(err){if(!type){alert(msg)}}}');
+function base64Encode(a){var b,c,d,e,f,g,h="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";for(d=a.length,c=0,b="";d>c;){if(e=255&a.charCodeAt(c++),c==d){b+=h.charAt(e>>2),b+=h.charAt((3&e)<<4),b+="==";break}if(f=a.charCodeAt(c++),c==d){b+=h.charAt(e>>2),b+=h.charAt((3&e)<<4|(240&f)>>4),b+=h.charAt((15&f)<<2),b+="=";break}g=a.charCodeAt(c++),b+=h.charAt(e>>2),b+=h.charAt((3&e)<<4|(240&f)>>4),b+=h.charAt((15&f)<<2|(192&g)>>6),b+=h.charAt(63&g)}return b;}
 function isUrl(url) {
     return /^(http|https):\/\/([\w-]+(:[\w-]+)?@)?[\w-]+(\.[\w-]+)+(:[\d]+)?([#\/\?][^\s<>;"\']*)?$/.test(url);
 }
@@ -594,6 +585,3 @@ function googleAnalytics() {
     loadJs(js);
 }
 googleAnalytics();
-
-
-
